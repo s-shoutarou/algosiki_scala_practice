@@ -5,7 +5,12 @@
 def msg = "I was compiled by Scala 3. :)"
 
 import scala.io.StdIn
+import scala.io.Source
 import scala.annotation.nowarn
+import scala.math._
+import scala.math.Ordered.orderingToOrdered
+import scala.math.Ordering.Implicits.infixOrderingOps
+import scala.annotation.targetName
 
 def q1_1 = {
     val num = StdIn.readLine().toInt
@@ -122,3 +127,124 @@ def calcQ1_4(target: Int ,count: Int): Int = {
     case x if nowNum < target => calcQ1_4(target ,nowNum + (target - nowNum), count + (target - nowNum))
     case _ => count
 } */
+
+def q1_6 = {
+  // 複数行の標準入力を読み込む
+  val lines = scala.collection.mutable.ListBuffer[String]()
+  var input = ""
+
+  // 空行が入力されるまで入力を受け付ける
+  while ({ input = scala.io.StdIn.readLine(); input.nonEmpty }) {
+    lines += input
+  }
+
+  val tmp = lines.tail.map( v => v.split(" ").toList.map(_.toDouble)).filter(v => v.exists(_ > 0)).toList
+  println(calcQ1_6(List(0,0), tmp, 0))
+}
+
+def calcQ1_6 (nowPoint:List[Double], points:List[List[Double]], nowAmount:Double): Double = {
+  if (points.length > 0) {
+    val distances = points.zipWithIndex.map { case (v, index) => List(index, calculateDistance(nowPoint(0), nowPoint(1),  v(0), v(1)))}
+
+    val t = distances.sortBy(subList => subList(1).asInstanceOf[Double])
+    val f = points.zipWithIndex.filter{ case (v, index) => index != t(0)(0).asInstanceOf[Int]}.map(_.productIterator.toList).map(_(0))
+    calcQ1_6(points(t(0)(0).asInstanceOf[Int]), 
+            f.asInstanceOf[List[List[Double]]], 
+            nowAmount + t(0)(1).asInstanceOf[Double])
+  } else if (points.length  == 0) {
+    nowAmount + calculateDistance(nowPoint(0), nowPoint(1), 0.0, 0.0)
+  }
+  else {
+    0
+  }
+}
+
+  def calculateDistance(x1: Double, y1: Double, x2: Double, y2: Double): Double = {
+    sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2))
+  }
+
+
+
+
+  ///////////////
+  object TSPGreedy {
+
+  type Point = (Double, Double)
+
+  def main(args: Array[String]): Unit = {
+    // 複数行の標準入力を読み込む
+    val lines = Iterator.continually(scala.io.StdIn.readLine()).takeWhile(_.nonEmpty).toList
+
+    // 入力行から座標のリストを生成
+    val points = lines.tail.map(v => v.split(" ").toList.map(_.toDouble) match {
+      case x :: y :: Nil => (x, y)
+      case _ => throw new IllegalArgumentException("Invalid input format")
+    }).filter(point => point._1 > 0 || point._2 > 0)
+
+    // 巡回セールスマン問題を解く
+    val tour = solveTSP(List((0.0, 0.0), points.head), points.tail)
+    val totalDistance = calculateTotalDistance(tour)
+
+    // 結果を表示
+    println(s"Optimal Tour: $tour")
+    println(s"Total Distance: $totalDistance")
+  }
+
+  // 巡回セールスマン問題を解く関数
+  def solveTSP(currentTour: List[Point], remainingPoints: List[Point]): List[Point] = {
+    if (remainingPoints.isEmpty) {
+      currentTour.reverse
+    } else {
+      // 最も近い未訪問の都市を求め、それを次の都市として追加
+      val nearestPoint = findNearestPoint(currentTour.head, remainingPoints)
+      solveTSP(nearestPoint :: currentTour, remainingPoints.filterNot(_ == nearestPoint))
+    }
+  }
+
+  // 最も近い都市を求める関数
+  def findNearestPoint(currentPoint: Point, remainingPoints: List[Point]): Point = {
+    remainingPoints.minBy(point => calculateDistance(currentPoint, point))
+  }
+
+  // 巡回経路の総距離を計算する関数
+  def calculateTotalDistance(tour: List[Point]): Double = {
+    tour.sliding(2).foldLeft(0.0) { (acc, pair) =>
+      acc + calculateDistance(pair.head, pair.last)
+    }
+  }
+
+  // 2つの座標の距離を計算する関数
+  def calculateDistance(point1: Point, point2: Point): Double = {
+    val (x1, y1) = point1
+    val (x2, y2) = point2
+    math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2))
+  }
+}
+
+
+def q1_7 = {
+  val events = List((10,20), (12,15), (15,18), (20,22))
+  val res = calcSchedule(events, (0, 0))
+
+  println(res)
+}
+
+def makePerfectSchedule (events: List[(Int, Int)], target: (Int, Int), nowResult:List[(Int, Int)]) = {
+  if(events.nonEmpty){
+    val tmp = calcSchedule(events ,target)
+    makePerfectSchedule(events.filterNot(v => v._1 == tmp._1 && v._2 == tmp._2), tmp, tmp::nowResult)
+  } else {
+    nowResult
+  }
+}
+
+def calcSchedule (events: List[(Int, Int)], target: (Int, Int))= {
+  val sortedList = events.sortBy(_._1)
+  val minDiffNowEnd = sortedList.map( v => v._1 - target._2).filter(_ >= 0).minBy(v => v)
+  val tmpEvents = events.filter(v => v._1 - target._2 <= minDiffNowEnd)
+  val minDiff = tmpEvents.map( v => v._2 - v._1).filter(_ >= 0).minBy(v => v)
+  println(minDiffNowEnd)
+  println(minDiff)
+
+  tmpEvents.find(v => v._2 - v._1 == minDiff)
+}
